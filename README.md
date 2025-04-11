@@ -1,7 +1,7 @@
-
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Smart Expense Tracker</title>
   <style>
@@ -10,31 +10,15 @@
       --text-color: #1a1a1a;
       --card-color: #ffffff;
       --accent-color: #00bfa6;
+      --input-bg: #e0e0e0;
     }
-<form id="expense-form">
-  <input type="text" id="expense-name" placeholder="Expense Name" required>
-  <input type="number" id="expense-amount" placeholder="Amount" required>
-
-  <!-- New: Expense Type Dropdown -->
-  <select id="expense-type" required>
-    <option value="">Select Type</option>
-    <option value="Food">Food</option>
-    <option value="Transport">Transport</option>
-    <option value="Shopping">Shopping</option>
-    <option value="Bills">Bills</option>
-    <option value="Other">Other</option>
-  </select>
-
-  <button type="submit">Add Expense</button>
-</form>
-
-<ul id="expense-list"></ul>
 
     [data-theme="dark"] {
       --bg-color: #1e2a38;
       --text-color: #f1f1f1;
       --card-color: #2e3d51;
       --accent-color: #00ffc3;
+      --input-bg: #3b4d64;
     }
 
     * {
@@ -72,7 +56,7 @@
       color: var(--accent-color);
     }
 
-    .toggle-btn {
+    .Theme-btn {
       background: var(--accent-color);
       border: none;
       color: #000;
@@ -88,21 +72,26 @@
       margin: 20px 0;
     }
 
-    form {
+    .limit-warning {
+      text-align: center;
+      color: red;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    form, .filter {
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
 
-    input, button {
+    input, select, button {
       padding: 10px;
       font-size: 16px;
       border: none;
       border-radius: 10px;
-    }
-
-    input {
-      background: #e0e0e0;
+      background: var(--input-bg);
+      color: var(--text-color);
     }
 
     button[type="submit"] {
@@ -120,8 +109,7 @@
 
     .expense {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-direction: column;
       background: #dfe6e9;
       padding: 10px;
       border-radius: 8px;
@@ -131,22 +119,15 @@
     [data-theme="dark"] .expense {
       background: #3b4d64;
     }
-#expense-form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-width: 300px;
-}
 
-#expense-list li {
-  margin: 5px 0;
-  padding: 5px;
-  background: #f3f3f3;
-  border-radius: 5px;
-}
+    .expense-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
 
     .expense span {
-      flex: 1;
+      margin: 2px 0;
     }
 
     .actions {
@@ -170,6 +151,12 @@
       background: #ff6b6b;
       color: white;
     }
+
+    .category-summary {
+      margin-top: 15px;
+      font-size: 14px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body data-theme="light">
@@ -177,64 +164,92 @@
   <div class="tracker">
     <div class="header">
       <h1>Expense Tracker</h1>
-      <button class="toggle-btn" onclick="toggleTheme()">🌗 Toggle</button>
+      <button class="Theme-btn" onclick="ThemeTheme()">🌗 Theme</button>
     </div>
 
-    <div class="balance">Balance: $<span id="balance">0.00</span></div>
+    <div class="balance">Balance: ₹<span id="balance">0.00</span></div>
+    <div id="limit-warning" class="limit-warning" style="display: none;">
+      🚨 You have exceeded your ₹6000 spending limit!
+    </div>
 
     <form id="expense-form">
       <input type="text" id="description" placeholder="Expense Description" required />
-      <input type="number" id="amount" placeholder="Amount" required min="0.01" step="0.01" />
+      <select id="category" required>
+        <option value="" disabled selected>Select Category</option>
+        <option value="Food">🍔 Food</option>
+        <option value="Transport">🚌 Transport</option>
+        <option value="Shopping">🛍️ Shopping</option>
+        <option value="Entertainment">🎬 Entertainment</option>
+        <option value="Utilities">💡 Utilities</option>
+        <option value="Other">📦 Other</option>
+      </select>
+      <input type="number" id="amount" placeholder="Amount (₹)" required min="0.01" step="0.01" />
       <button type="submit">Add Expense</button>
     </form>
 
+    <div class="filter">
+      <select id="filter-category">
+        <option value="All">🔎 Filter by Category</option>
+        <option value="Food">🍔 Food</option>
+        <option value="Transport">🚌 Transport</option>
+        <option value="Shopping">🛍️ Shopping</option>
+        <option value="Entertainment">🎬 Entertainment</option>
+        <option value="Utilities">💡 Utilities</option>
+        <option value="Other">📦 Other</option>
+      </select>
+    </div>
+
     <div class="expenses" id="expenses-list"></div>
+    <div class="category-summary" id="category-summary"></div>
   </div>
+
+  <audio id="alert-sound" src="https://www.soundjay.com/button/beep-07.wav" preload="auto"></audio>
 
   <script>
     const form = document.getElementById('expense-form');
     const descriptionInput = document.getElementById('description');
+    const categoryInput = document.getElementById('category');
     const amountInput = document.getElementById('amount');
     const balanceDisplay = document.getElementById('balance');
     const expensesList = document.getElementById('expenses-list');
+    const warning = document.getElementById('limit-warning');
+    const filterCategory = document.getElementById('filter-category');
+    const categorySummary = document.getElementById('category-summary');
+    const alertSound = document.getElementById('alert-sound');
     const body = document.body;
 
-    let balance = 0;
-    let expenses = [];
+    const SPENDING_LIMIT = 6000;
+
+    let expenses = JSON.parse(localStorage.getItem("expenses")) || [];
     let editIndex = -1;
 
     function updateBalance() {
-      const total = expenses.reduce((sum, exp) => sum - exp.amount, 0);
-      balance = total;
-      balanceDisplay.textContent = balance.toFixed(2);
+      const total = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+      balanceDisplay.textContent = total.toFixed(2);
+
+      if (total > SPENDING_LIMIT) {
+        warning.style.display = 'block';
+        alertSound.play();
+      } else {
+        warning.style.display = 'none';
+      }
     }
-const form = document.getElementById('expense-form');
-const list = document.getElementById('expense-list');
-
-form.addEventListener('submit', function (e) {
-  e.preventDefault();
-
-  const name = document.getElementById('expense-name').value;
-  const amount = document.getElementById('expense-amount').value;
-  const type = document.getElementById('expense-type').value;
-
-  if (!name || !amount || !type) return;
-
-  const li = document.createElement('li');
-  li.textContent = `${name} - $${amount} [${type}]`;
-  list.appendChild(li);
-
-  form.reset();
-});
 
     function renderExpenses() {
       expensesList.innerHTML = '';
-      expenses.forEach((expense, index) => {
+      const filter = filterCategory.value;
+
+      const filteredExpenses = filter === "All" ? expenses : expenses.filter(e => e.category === filter);
+
+      filteredExpenses.forEach((expense, index) => {
         const div = document.createElement('div');
         div.className = 'expense';
         div.innerHTML = `
-          <span>${expense.description}</span>
-          <span>-$${expense.amount.toFixed(2)}</span>
+          <div class="expense-top">
+            <span><strong>${expense.category}:</strong> ${expense.description}</span>
+            <span>-₹${expense.amount.toFixed(2)}</span>
+          </div>
+          <span style="font-size: 12px;">🕒 ${expense.time}</span>
           <div class="actions">
             <button class="edit-btn" onclick="editExpense(${index})">Edit</button>
             <button class="delete-btn" onclick="deleteExpense(${index})">Delete</button>
@@ -242,44 +257,75 @@ form.addEventListener('submit', function (e) {
         `;
         expensesList.appendChild(div);
       });
+
+      updateCategorySummary();
+    }
+
+    function updateCategorySummary() {
+      const summary = {};
+      expenses.forEach(e => {
+        summary[e.category] = (summary[e.category] || 0) + e.amount;
+      });
+
+      categorySummary.innerHTML = Object.entries(summary)
+        .map(([cat, amt]) => `${cat}: ₹${amt.toFixed(2)}`)
+        .join(' | ');
     }
 
     function editExpense(index) {
       const expense = expenses[index];
       descriptionInput.value = expense.description;
       amountInput.value = expense.amount;
+      categoryInput.value = expense.category;
       editIndex = index;
     }
 
     function deleteExpense(index) {
       expenses.splice(index, 1);
+      saveToLocal();
       renderExpenses();
       updateBalance();
+    }
+
+    function saveToLocal() {
+      localStorage.setItem("expenses", JSON.stringify(expenses));
     }
 
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       const desc = descriptionInput.value.trim();
       const amount = parseFloat(amountInput.value);
+      const category = categoryInput.value;
+      const time = new Date().toLocaleString();
 
-      if (desc && amount > 0) {
+      if (desc && amount > 0 && category) {
+        const expenseData = { description: desc, amount, category, time };
+
         if (editIndex >= 0) {
-          expenses[editIndex] = { description: desc, amount };
+          expenses[editIndex] = expenseData;
           editIndex = -1;
         } else {
-          expenses.unshift({ description: desc, amount });
+          expenses.unshift(expenseData);
         }
+
         descriptionInput.value = '';
         amountInput.value = '';
+        categoryInput.value = '';
+        saveToLocal();
         renderExpenses();
         updateBalance();
       }
     });
 
-    function toggleTheme() {
+    function ThemeTheme() {
       const current = body.getAttribute('data-theme');
       body.setAttribute('data-theme', current === 'light' ? 'dark' : 'light');
     }
+
+    filterCategory.addEventListener('change', renderExpenses);
+
+    renderExpenses();
+    updateBalance();
   </script>
 </body>
 </html>
