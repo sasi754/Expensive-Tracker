@@ -11,6 +11,24 @@
       --card-color: #ffffff;
       --accent-color: #00bfa6;
     }
+<form id="expense-form">
+  <input type="text" id="expense-name" placeholder="Expense Name" required>
+  <input type="number" id="expense-amount" placeholder="Amount" required>
+
+  <!-- New: Expense Type Dropdown -->
+  <select id="expense-type" required>
+    <option value="">Select Type</option>
+    <option value="Food">Food</option>
+    <option value="Transport">Transport</option>
+    <option value="Shopping">Shopping</option>
+    <option value="Bills">Bills</option>
+    <option value="Other">Other</option>
+  </select>
+
+  <button type="submit">Add Expense</button>
+</form>
+
+<ul id="expense-list"></ul>
 
     [data-theme="dark"] {
       --bg-color: #1e2a38;
@@ -113,6 +131,19 @@
     [data-theme="dark"] .expense {
       background: #3b4d64;
     }
+#expense-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 300px;
+}
+
+#expense-list li {
+  margin: 5px 0;
+  padding: 5px;
+  background: #f3f3f3;
+  border-radius: 5px;
+}
 
     .expense span {
       flex: 1;
@@ -177,6 +208,24 @@
       balance = total;
       balanceDisplay.textContent = balance.toFixed(2);
     }
+const form = document.getElementById('expense-form');
+const list = document.getElementById('expense-list');
+
+form.addEventListener('submit', function (e) {
+  e.preventDefault();
+
+  const name = document.getElementById('expense-name').value;
+  const amount = document.getElementById('expense-amount').value;
+  const type = document.getElementById('expense-type').value;
+
+  if (!name || !amount || !type) return;
+
+  const li = document.createElement('li');
+  li.textContent = `${name} - $${amount} [${type}]`;
+  list.appendChild(li);
+
+  form.reset();
+});
 
     function renderExpenses() {
       expensesList.innerHTML = '';
